@@ -3,12 +3,20 @@ from contextlib import asynccontextmanager
 import uvicorn
 from fastapi import FastAPI
 
-from api.utils import AppException, app_exception_manager, default_exception_manager
 from api.v1 import v1_router
+from api.v1.utils import AppException, app_exception_manager, default_exception_manager
+from config import model_instance, connect_qdrant, disconnect_qdrant
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    pass
+    model_instance.load_model()
+    connect_qdrant()
+
+    yield
+
+    model_instance.release_model()
+    disconnect_qdrant()
 
 
 app = FastAPI(debug=False, lifespan=lifespan)
