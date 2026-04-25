@@ -11,7 +11,7 @@ from config import (
 )
 
 
-async def insert_answers(submissions: dict, student: int, exam: str):
+async def insert_answers(submissions: dict, user: int, exam: str):
     """Insert student answers into Qdrant collections"""
     lowercase = lowercase_submissions(submissions)
     cleaned = {}
@@ -33,10 +33,10 @@ async def insert_answers(submissions: dict, student: int, exam: str):
                 collection_name=collection_name,
                 points=[
                     PointStruct(
-                        id=student,
+                        id=user,
                         vector=embedding.tolist(),
                         payload={
-                            "student_id": student,
+                            "student_id": user,
                             "exam_id": exam,
                             "question_id": question_id,
                             "timestamp": datetime.now().isoformat(),
@@ -52,7 +52,7 @@ async def insert_answers(submissions: dict, student: int, exam: str):
     return results
 
 
-async def detect_all_cheaters(exam: str):
+async def get_exam_report(exam: str):
     """Detect all suspected cheaters for an exam by comparing all answers"""
     vdb = get_qdrant_client()
 
