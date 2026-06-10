@@ -1,0 +1,46 @@
+# Environment & secrets
+.env
+.env.*
+
+# Git
+.git
+.gitignore
+
+# Python cache & bytecode
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# IDE & editor config
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Testing & linting artifacts
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+
+# Docker files (no need to copy into image)
+Dockerfile
+.dockerignore
+
+# Logs
+*.log
+logs/

@@ -49,3 +49,12 @@ class ForbiddenException(AppException):
         self, message: str = "Forbidden", status_code: int = status.HTTP_403_FORBIDDEN
     ):
         super().__init__(message, status_code)
+
+
+class ServiceException(AppException):
+    def __init__(
+        self,
+        message: str = "External service error.",
+        status_code: int = status.HTTP_503_SERVICE_UNAVAILABLE,
+    ):
+        super().__init__(message, status_code)

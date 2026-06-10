@@ -7,7 +7,7 @@ router = APIRouter()
 
 @router.post("/insert")
 async def insert_student_answers(
-    submissions: dict, x_user_id: int = Header(...), x_exam_id: str = Header(...)
+    submissions: dict, x_user_id: str = Header(...), x_exam_id: str = Header(...)
 ):
     """Insert student answers into collections"""
     return await insert_answers(submissions, x_user_id, x_exam_id)

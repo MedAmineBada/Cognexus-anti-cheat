@@ -1,7 +1,9 @@
 from datetime import datetime
 
+from qdrant_client.http.exceptions import UnexpectedResponse
 from qdrant_client.models import PointStruct
 
+from api.v1.utils.custom_exceptions import ServiceException, NotFoundException
 from api.v1.utils.helpers import lowercase_submissions, clean_text
 from config import (
     ensure_collection,
@@ -11,7 +13,7 @@ from config import (
 )
 
 
-async def insert_answers(submissions: dict, user: int, exam: str):
+async def insert_answers(submissions: dict, user: str, exam: str):
     """Insert student answers into Qdrant collections"""
     lowercase = lowercase_submissions(submissions)
     cleaned = {}
@@ -20,12 +22,23 @@ async def insert_answers(submissions: dict, user: int, exam: str):
         for question_id, answer_text in questions.items():
             cleaned[question_id] = clean_text(answer_text)
 
-    vdb = get_qdrant_client()
+    try:
+        vdb = get_qdrant_client()
+    except Exception as e:
+        raise ServiceException(f"Failed to connect to Qdrant: {e}")
+
     results = {}
 
     for question_id, answer_text in cleaned.items():
-        embedding = model_instance.model.encode(answer_text)
-        collection_name = ensure_collection(exam, question_id)
+        try:
+            embedding = model_instance.model.encode(answer_text)
+        except Exception as e:
+            raise ServiceException(f"Failed to encode answer with embedding model: {e}")
+
+        try:
+            collection_name = ensure_collection(exam, question_id)
+        except Exception as e:
+            raise ServiceException(f"Failed to ensure Qdrant collection: {e}")
 
         # Upsert embedding only
         try:
@@ -45,22 +58,37 @@ async def insert_answers(submissions: dict, user: int, exam: str):
                 ],
             )
             results[question_id] = {"status": "inserted"}
+        except UnexpectedResponse as e:
+            # Qdrant specific error, e.g., collection not found if ensure_collection failed silently
+            raise ServiceException(f"Qdrant upsert failed for {collection_name}: {e}")
         except Exception as e:
-            print(f"Insert error for {collection_name}: {e}")
-            results[question_id] = {"status": "failed", "error": str(e)}
+            # Catch any other unexpected errors during upsert
+            raise ServiceException(
+                f"An unexpected error occurred during upsert for {collection_name}: {e}"
+            )
 
     return results
 
 
 async def get_exam_report(exam: str):
     """Detect all suspected cheaters for an exam by comparing all answers"""
-    vdb = get_qdrant_client()
+    try:
+        vdb = get_qdrant_client()
+    except Exception as e:
+        raise ServiceException(f"Failed to connect to Qdrant: {e}")
 
     # Get all collections for this exam
-    all_collections = vdb.get_collections().collections
+    try:
+        all_collections = vdb.get_collections().collections
+    except Exception as e:
+        raise ServiceException(f"Failed to retrieve Qdrant collections: {e}")
+
     exam_collections = [
         c.name for c in all_collections if c.name.startswith(f"{exam}_Q")
     ]
+
+    if not exam_collections:
+        raise NotFoundException(f"No collections found for exam: {exam}")
 
     cheat_report = {}
 
@@ -117,8 +145,13 @@ async def get_exam_report(exam: str):
 
             cheat_report[question_id] = question_cheaters
 
+        except UnexpectedResponse as e:
+            raise ServiceException(
+                f"Qdrant operation failed for {collection_name}: {e}"
+            )
         except Exception as e:
-            print(f"Detection error for {collection_name}: {e}")
-            cheat_report[question_id] = {"error": str(e)}
+            raise ServiceException(
+                f"An unexpected error occurred during detection for {collection_name}: {e}"
+            )
 
     return cheat_report
